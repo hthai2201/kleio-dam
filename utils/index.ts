@@ -38,7 +38,7 @@ export const downloadFile = async (
     } else {
       if (fs.existsSync(filePath)) {
         const result: DownloadResult = {
-          fileName: asset.fileName,
+          fileName: asset.fileName || asset["@name"],
           success: true,
           message: "File existed",
         };
@@ -68,7 +68,7 @@ export const downloadFile = async (
     });
 
     const result: DownloadResult = {
-      fileName: asset.fileName,
+      fileName: asset.fileName || asset["@name"],
       success: true,
       message: "File downloaded and saved successfully",
     };
@@ -78,7 +78,7 @@ export const downloadFile = async (
     console.error(`Error downloading file from ${url}:`, error);
 
     const result: DownloadResult = {
-      fileName: asset.fileName,
+      fileName: asset.fileName || asset["@name"],
       success: false,
       error: error as Error,
     };
