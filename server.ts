@@ -32,7 +32,7 @@ app.post("/download", async (req: Request, res: Response) => {
         .json({ error: "Invalid data from the specified URL" });
     }
 
-    const results: (DownloadResult | Error)[] = [];
+    const results: DownloadResult[] = [];
     const chunks = chunkArray(filesToDownload, DOWNLOAD_CONFIG.ITEMS_PER_BATCH);
     for (const chunk of chunks) {
       try {
@@ -41,12 +41,21 @@ app.post("/download", async (req: Request, res: Response) => {
         );
         results.push(...items);
         await delay(DOWNLOAD_CONFIG.DELAY);
+        console.log("progress :>> ", results.length, filesToDownload.length);
       } catch (error) {
-        results.push(error as Error);
+        results.push({
+          success: false,
+          error: error as Error,
+        });
       }
     }
 
-    res.status(200).json(results);
+    res.status(200).json({
+      total: filesToDownload.length,
+      success: results.filter((i) => i.success).length,
+      erros: results.filter((i) => !i.success).length,
+      results,
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Internal Server Error" });

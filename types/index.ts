@@ -12,8 +12,8 @@ export interface Asset {
 }
 
 export interface DownloadResult {
-  fileName: string;
+  fileName?: string;
   success: boolean;
   message?: string;
-  error?: string;
+  error?: Error;
 }

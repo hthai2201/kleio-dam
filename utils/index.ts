@@ -31,12 +31,6 @@ export const downloadFile = async (
 ): Promise<DownloadResult> => {
   const url = `${baseUrl}/dam${asset["@path"]}`;
   try {
-    const response = await axios.get(url, { responseType: "stream" });
-
-    if (response.status !== 200) {
-      throw new Error(`Failed to download file from ${url}`);
-    }
-
     const filePath = path.join(process.cwd(), "dam", asset["@path"]);
     const dirname = path.dirname(filePath);
     if (!fs.existsSync(dirname)) {
@@ -46,18 +40,31 @@ export const downloadFile = async (
         const result: DownloadResult = {
           fileName: asset.fileName,
           success: true,
-          message: "File downloaded and saved successfully",
+          message: "File existed",
         };
         return result;
       }
     }
 
+    const response = await axios.get(url, { responseType: "stream" });
+
+    if (response.status !== 200) {
+      throw new Error(`Failed to download file from ${url}`);
+    }
     const fileStream = fs.createWriteStream(filePath);
 
     await new Promise<void>((resolve, reject) => {
       response.data.pipe(fileStream);
-      response.data.on("error", reject);
-      fileStream.on("finish", resolve);
+      response.data.on("error", (err: Error) => {
+        fs.unlink(filePath, () => {
+          fileStream.close();
+          reject(err);
+        });
+      });
+      fileStream.on("finish", () => {
+        fileStream.close();
+        resolve();
+      });
     });
 
     const result: DownloadResult = {
@@ -73,10 +80,10 @@ export const downloadFile = async (
     const result: DownloadResult = {
       fileName: asset.fileName,
       success: false,
-      error: "Error downloading file",
+      error: error as Error,
     };
 
-    throw result;
+    return result;
   }
 };
 
