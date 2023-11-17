@@ -9,7 +9,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "lib": ["esnext"],
-    "module": "esnext",
+    "module": "nodenext",
     "moduleResolution": "nodenext",
     "noEmit": true,
     "noFallthroughCasesInSwitch": true,

@@ -27,11 +27,15 @@ export const fetchFilesFromUrl = async (url: string): Promise<Asset[]> => {
 
 export const downloadFile = async (
   asset: Asset,
-  { baseUrl }: { baseUrl: string }
+  { baseUrl, outputDir }: { baseUrl: string; outputDir?: string }
 ): Promise<DownloadResult> => {
   const url = `${baseUrl}/dam${asset["@path"]}`;
   try {
-    const filePath = path.join(process.cwd(), "dam", asset["@path"]);
+    const filePath = path.join(
+      outputDir || process.cwd(),
+      "dam",
+      asset["@path"]
+    );
     const dirname = path.dirname(filePath);
     if (!fs.existsSync(dirname)) {
       fs.mkdirSync(dirname, { recursive: true });
@@ -96,6 +100,6 @@ export function chunkArray<T>(array: T[], chunkSize: number): T[][] {
 
   return result;
 }
-export function delay(ms: number) {
+export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

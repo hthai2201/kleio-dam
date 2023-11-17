@@ -1,11 +1,9 @@
 import express, { Request, Response } from "express";
 
-import path from "path";
-import { fileURLToPath } from "url";
 import { DOWNLOAD_CONFIG } from "./constants.js";
 import {
   chunkArray,
-  delay,
+  sleep,
   downloadFile,
   fetchFilesFromUrl,
 } from "./utils/index.js";
@@ -18,8 +16,13 @@ app.use(express.json());
 
 app.post("/download", async (req: Request, res: Response) => {
   try {
-    const { path: dataPath, baseUrl = DOWNLOAD_CONFIG.DEFAULT_BASE_URL } =
-      req.body;
+    const {
+      path: dataPath,
+      baseUrl = DOWNLOAD_CONFIG.DEFAULT_BASE_URL,
+      outputDir,
+      delay,
+      itemsPerPatch,
+    } = req.body;
 
     if (!dataPath) {
       return res.status(400).json({ error: "Invalid request body" });
@@ -33,16 +36,20 @@ app.post("/download", async (req: Request, res: Response) => {
     }
 
     const results: DownloadResult[] = [];
-    const chunks = chunkArray(filesToDownload, DOWNLOAD_CONFIG.ITEMS_PER_BATCH);
+    const chunks = chunkArray(
+      filesToDownload,
+      itemsPerPatch ?? DOWNLOAD_CONFIG.ITEMS_PER_BATCH
+    );
     for (const chunk of chunks) {
       try {
         const items = await Promise.all(
-          chunk.map((item) => downloadFile(item, { baseUrl }))
+          chunk.map((item) => downloadFile(item, { baseUrl, outputDir }))
         );
         results.push(...items);
-        await delay(DOWNLOAD_CONFIG.DELAY);
+        await sleep(delay ?? DOWNLOAD_CONFIG.DELAY);
         console.log("progress :>> ", results.length, filesToDownload.length);
       } catch (error) {
+        console.log("error :>> ", error);
         results.push({
           success: false,
           error: error as Error,
@@ -57,7 +64,7 @@ app.post("/download", async (req: Request, res: Response) => {
       results,
     });
   } catch (error) {
-    console.error("Error:", error);
+    // console.error("Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
