@@ -22,6 +22,7 @@ app.post("/download", async (req: Request, res: Response) => {
       outputDir,
       delay,
       itemsPerPatch,
+      useJCRPath,
     } = req.body;
 
     if (!dataPath) {
@@ -43,7 +44,9 @@ app.post("/download", async (req: Request, res: Response) => {
     for (const chunk of chunks) {
       try {
         const items = await Promise.all(
-          chunk.map((item) => downloadFile(item, { baseUrl, outputDir }))
+          chunk.map((item) =>
+            downloadFile(item, { baseUrl, outputDir, useJCRPath })
+          )
         );
         results.push(...items);
         await sleep(delay ?? DOWNLOAD_CONFIG.DELAY);

@@ -27,55 +27,78 @@ export const fetchFilesFromUrl = async (url: string): Promise<Asset[]> => {
 
 export const downloadFile = async (
   asset: Asset,
-  { baseUrl, outputDir }: { baseUrl: string; outputDir?: string }
+  {
+    baseUrl,
+    outputDir,
+    useJCRPath,
+  }: { baseUrl: string; outputDir?: string; useJCRPath?: string }
 ): Promise<DownloadResult> => {
   const url = `${baseUrl}/dam${asset["@path"]}`;
   try {
+    let result: DownloadResult = {
+      fileName: asset.fileName || asset["@name"],
+      id: asset["@id"],
+      success: true,
+      message: "File downloaded and saved successfully",
+    };
+
     const filePath = path.join(
       outputDir || process.cwd(),
       "dam",
       asset["@path"]
     );
+
     const dirname = path.dirname(filePath);
     if (!fs.existsSync(dirname)) {
       fs.mkdirSync(dirname, { recursive: true });
+    }
+    if (fs.existsSync(filePath)) {
+      result = {
+        fileName: asset.fileName || asset["@name"],
+        id: asset["@id"],
+        success: true,
+        message: "File existed",
+      };
     } else {
-      if (fs.existsSync(filePath)) {
-        const result: DownloadResult = {
-          fileName: asset.fileName || asset["@name"],
-          success: true,
-          message: "File existed",
-        };
-        return result;
+      const response = await axios.get(url, { responseType: "stream" });
+
+      if (response.status !== 200) {
+        throw new Error(`Failed to download file from ${url}`);
       }
-    }
+      const fileStream = fs.createWriteStream(filePath);
 
-    const response = await axios.get(url, { responseType: "stream" });
-
-    if (response.status !== 200) {
-      throw new Error(`Failed to download file from ${url}`);
-    }
-    const fileStream = fs.createWriteStream(filePath);
-
-    await new Promise<void>((resolve, reject) => {
-      response.data.pipe(fileStream);
-      response.data.on("error", (err: Error) => {
-        fs.unlink(filePath, () => {
+      await new Promise<void>((resolve, reject) => {
+        response.data.pipe(fileStream);
+        response.data.on("error", (err: Error) => {
+          fs.unlink(filePath, () => {
+            fileStream.close();
+            reject(err);
+          });
+        });
+        fileStream.on("finish", () => {
           fileStream.close();
-          reject(err);
+          resolve();
         });
       });
-      fileStream.on("finish", () => {
-        fileStream.close();
-        resolve();
-      });
-    });
+    }
 
-    const result: DownloadResult = {
-      fileName: asset.fileName || asset["@name"],
-      success: true,
-      message: "File downloaded and saved successfully",
-    };
+    if (useJCRPath) {
+      const jcrPath = path.join(
+        outputDir || process.cwd(),
+        "dam",
+        `jcr:${asset["@id"]}`,
+        asset["@name"]
+      );
+      const jcrDirname = path.dirname(jcrPath);
+
+      if (!fs.existsSync(jcrDirname)) {
+        fs.mkdirSync(jcrDirname, { recursive: true });
+      }
+
+      if (!fs.existsSync(jcrPath)) {
+        await fs.promises.copyFile(filePath, jcrPath);
+      }
+    }
 
     return result;
   } catch (error) {
@@ -83,6 +106,7 @@ export const downloadFile = async (
 
     const result: DownloadResult = {
       fileName: asset.fileName || asset["@name"],
+      id: asset["@id"],
       success: false,
       error: error as Error,
     };

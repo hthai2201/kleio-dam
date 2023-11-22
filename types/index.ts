@@ -16,4 +16,5 @@ export interface DownloadResult {
   success: boolean;
   message?: string;
   error?: Error;
+  id?: string;
 }
